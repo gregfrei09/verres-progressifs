@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Verres Progressifs – Optic 2.0</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #1a4fdb;
+    --blue-light: #e8effe;
+    --gray: #f5f5f3;
+    --text: #111;
+    --text-muted: #777;
+    --border: #e5e5e5;
+    --white: #fff;
+    --radius: 14px;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    background: #f0f0ee;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .app {
+    max-width: 430px;
+    margin: 0 auto;
+    height: 100dvh;
+    height: 100vh;
+    background: var(--white);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 20px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--white);
+  }
+  .header-left { display: flex; flex-direction: column; }
+  .header-brand {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--blue);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .header-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--blue-light);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; }
+
+  /* ── IMAGE VIEWER ── */
+  .viewer {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #1c1c1e;
+    touch-action: pan-y;
+    cursor: grab;
+  }
+  .viewer:active { cursor: grabbing; }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  .slide img {
+    width: 100%; height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* placeholder when no img */
+  .slide-placeholder {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 12px;
+    color: rgba(255,255,255,0.35);
+    font-size: 13px;
+    text-align: center;
+    padding: 20px;
+  }
+  .slide-placeholder svg { opacity: 0.4; }
+
+  /* gradient overlays */
+  .viewer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 90px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.45), transparent);
+    z-index: 2; pointer-events: none;
+  }
+  .viewer::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0; height: 70px;
+    background: linear-gradient(to top, rgba(0,0,0,0.35), transparent);
+    z-index: 2; pointer-events: none;
+  }
+
+  /* lens name label */
+  .lens-label {
+    position: absolute;
+    top: 16px; left: 18px; right: 18px;
+    z-index: 3;
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .lens-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+    line-height: 1.2;
+  }
+  .lens-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: #fff;
+    background: rgba(255,255,255,0.2);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 4px 10px;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  /* dots */
+  .dots {
+    position: absolute;
+    bottom: 14px; left: 50%; transform: translateX(-50%);
+    z-index: 3;
+    display: flex; gap: 6px;
+  }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    transition: all 0.2s;
+  }
+  .dot.active {
+    width: 18px;
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  /* swipe hint */
+  .swipe-hint {
+    position: absolute;
+    bottom: 12px; right: 16px;
+    z-index: 3;
+    font-size: 10px;
+    color: rgba(255,255,255,0.5);
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* ── CONTROLS ── */
+  .controls {
+    flex-shrink: 0;
+    padding: 16px 20px 0;
+  }
+  .slider-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .slider-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .slider-value {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 3px solid white;
+    box-shadow: 0 0 0 1.5px var(--blue), 0 2px 6px rgba(26,79,219,0.35);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:active {
+    transform: scale(1.15);
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 3px solid white;
+    box-shadow: 0 0 0 1.5px var(--blue);
+    cursor: pointer;
+  }
+  .slider-track {
+    position: relative;
+    margin-bottom: 8px;
+  }
+  .slider-fill {
+    position: absolute;
+    top: 50%; left: 0;
+    transform: translateY(-50%);
+    height: 4px;
+    background: var(--blue);
+    border-radius: 2px;
+    pointer-events: none;
+    transition: width 0.1s;
+  }
+  .slider-ticks {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 1px;
+    margin-top: 6px;
+  }
+  .tick {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    flex: 1;
+  }
+  .tick:first-child { text-align: left; }
+  .tick:last-child { text-align: right; }
+
+  /* ── CARDS ── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    padding: 14px 20px 20px;
+    flex-shrink: 0;
+  }
+  .card {
+    background: var(--gray);
+    border-radius: 10px;
+    padding: 10px 6px 8px;
+    text-align: center;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: border-color 0.15s, background 0.15s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .card.active {
+    background: var(--blue-light);
+    border-color: var(--blue);
+  }
+  .card-num {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+  .card.active .card-num { color: var(--blue); }
+  .card-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.25;
+  }
+  .card.active .card-name { color: var(--blue); }
+
+  /* ── INFO STRIP ── */
+  .info-strip {
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+    padding: 0 20px 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .info-strip::-webkit-scrollbar { display: none; }
+  .badge {
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 5px 11px;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-green  { background: #dcfce7; color: #166534; }
+  .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+  .badge-purple { background: #ede9fe; color: #6d28d9; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <span class="header-brand">Optic 2.0</span>
+      <span class="header-title">Verres progressifs</span>
+    </div>
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#1a4fdb" stroke-width="2" stroke-linecap="round">
+        <circle cx="7" cy="12" r="4"/><circle cx="17" cy="12" r="4"/><line x1="3" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="21" y2="12"/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- VIEWER -->
+  <div class="viewer" id="viewer">
+
+    <!-- Slide 0 : Standards -->
+    <div class="slide active" id="slide-0">
+      <img src="standards.jpg" alt="Verres standards" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="slide-placeholder" style="display:none">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span>standards.jpg</span>
+      </div>
+    </div>
+
+    <!-- Slide 1 : Optimisés -->
+    <div class="slide" id="slide-1">
+      <img src="optimises.jpg" alt="Verres optimisés" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="slide-placeholder" style="display:none">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span>optimises.jpg</span>
+      </div>
+    </div>
+
+    <!-- Slide 2 : Précision HD -->
+    <div class="slide" id="slide-2">
+      <img src="precision.jpg" alt="Verres Précision HD" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="slide-placeholder" style="display:none">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span>precision.jpg</span>
+      </div>
+    </div>
+
+    <!-- Slide 3 : Haute Définition -->
+    <div class="slide" id="slide-3">
+      <img src="haute-def.jpg" alt="Verres Haute Définition" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="slide-placeholder" style="display:none">
+        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        <span>haute-def.jpg</span>
+      </div>
+    </div>
+
+    <!-- label -->
+    <div class="lens-label">
+      <span class="lens-name" id="lensName">Verres standards</span>
+      <span class="lens-badge" id="lensBadge">01 / 04</span>
+    </div>
+
+    <!-- dots -->
+    <div class="dots">
+      <div class="dot active" id="dot-0"></div>
+      <div class="dot" id="dot-1"></div>
+      <div class="dot" id="dot-2"></div>
+      <div class="dot" id="dot-3"></div>
+    </div>
+
+    <!-- swipe hint -->
+    <div class="swipe-hint">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+      Glisser
+    </div>
+  </div>
+
+  <!-- SLIDER -->
+  <div class="controls">
+    <div class="slider-header">
+      <span class="slider-label">Niveau de qualité</span>
+      <span class="slider-value" id="sliderValue">Standards</span>
+    </div>
+    <div class="slider-track">
+      <div class="slider-fill" id="sliderFill" style="width:0%"></div>
+      <input type="range" min="0" max="3" step="1" value="0" id="slider">
+    </div>
+    <div class="slider-ticks">
+      <span class="tick">Standards</span>
+      <span class="tick">Optimisés</span>
+      <span class="tick">Précision</span>
+      <span class="tick">Haute Déf.</span>
+    </div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="cards">
+    <div class="card active" id="card-0" onclick="select(0)">
+      <div class="card-num">01</div>
+      <div class="card-name">Standards</div>
+    </div>
+    <div class="card" id="card-1" onclick="select(1)">
+      <div class="card-num">02</div>
+      <div class="card-name">Optimisés</div>
+    </div>
+    <div class="card" id="card-2" onclick="select(2)">
+      <div class="card-num">03</div>
+      <div class="card-name">Précision HD</div>
+    </div>
+    <div class="card" id="card-3" onclick="select(3)">
+      <div class="card-num">04</div>
+      <div class="card-name">Haute Déf.</div>
+    </div>
+  </div>
+
+  <!-- BADGES -->
+  <div class="info-strip" id="infoBadges"></div>
+
+</div>
+
+<script>
+const lenses = [
+  {
+    name: "Verres standards",
+    badges: [
+      { text: "Zones de flou larges", cls: "badge-yellow" },
+      { text: "Prix accessible",       cls: "badge-green"  },
+      { text: "Adaptation facile",     cls: "badge-blue"   }
+    ]
+  },
+  {
+    name: "Verres optimisés",
+    badges: [
+      { text: "Flou réduit",          cls: "badge-yellow" },
+      { text: "Bonne largeur de champ", cls: "badge-green" },
+      { text: "Confort amélioré",     cls: "badge-blue"   }
+    ]
+  },
+  {
+    name: "Verres Précision HD",
+    badges: [
+      { text: "Zones nettes élargies", cls: "badge-green"  },
+      { text: "Haute définition",      cls: "badge-blue"   },
+      { text: "Personnalisé",          cls: "badge-purple" }
+    ]
+  },
+  {
+    name: "Verres Haute Définition",
+    badges: [
+      { text: "Vision maximale",  cls: "badge-green"  },
+      { text: "Flou minimal",     cls: "badge-blue"   },
+      { text: "Sur-mesure",       cls: "badge-purple" }
+    ]
+  }
+];
+
+let current = 0;
+
+function select(i, fromSlider) {
+  current = i;
+  // slides
+  for (let j = 0; j < 4; j++) {
+    document.getElementById('slide-' + j).className = 'slide' + (j === i ? ' active' : '');
+    document.getElementById('dot-' + j).className   = 'dot'   + (j === i ? ' active' : '');
+    document.getElementById('card-' + j).className  = 'card'  + (j === i ? ' active' : '');
+  }
+  // label
+  document.getElementById('lensName').textContent  = lenses[i].name;
+  document.getElementById('lensBadge').textContent = '0' + (i + 1) + ' / 04';
+  // slider
+  if (!fromSlider) {
+    document.getElementById('slider').value = i;
+  }
+  updateFill(i);
+  document.getElementById('sliderValue').textContent = lenses[i].name;
+  // badges
+  const strip = document.getElementById('infoBadges');
+  strip.innerHTML = lenses[i].badges.map(b =>
+    `<span class="badge ${b.cls}">${b.text}</span>`
+  ).join('');
+}
+
+function updateFill(i) {
+  document.getElementById('sliderFill').style.width = (i / 3 * 100) + '%';
+}
+
+// slider input
+document.getElementById('slider').addEventListener('input', function() {
+  select(parseInt(this.value), true);
+});
+
+// swipe
+let startX = 0, startY = 0, dragging = false;
+const viewer = document.getElementById('viewer');
+
+viewer.addEventListener('touchstart', e => {
+  startX = e.touches[0].clientX;
+  startY = e.touches[0].clientY;
+  dragging = true;
+}, { passive: true });
+
+viewer.addEventListener('touchend', e => {
+  if (!dragging) return;
+  dragging = false;
+  const dx = e.changedTouches[0].clientX - startX;
+  const dy = e.changedTouches[0].clientY - startY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 40) {
+    if (dx < 0 && current < 3) select(current + 1);
+    if (dx > 0 && current > 0) select(current - 1);
+  }
+}, { passive: true });
+
+// mouse drag (desktop)
+viewer.addEventListener('mousedown', e => { startX = e.clientX; dragging = true; });
+viewer.addEventListener('mouseup', e => {
+  if (!dragging) return;
+  dragging = false;
+  const dx = e.clientX - startX;
+  if (Math.abs(dx) > 40) {
+    if (dx < 0 && current < 3) select(current + 1);
+    if (dx > 0 && current > 0) select(current - 1);
+  }
+});
+
+// init
+select(0);
+</script>
+</body>
+</html>
